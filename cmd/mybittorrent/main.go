@@ -33,7 +33,11 @@ func decodeString(bencodedString string) (interface{}, error) {
 }
 
 func decodeInteger(bencodedString string) (interface{}, error) {
-	return bencodedString[1 : len(bencodedString)-1], nil
+	integer, err := strconv.Atoi(bencodedString[1 : len(bencodedString)-1])
+	if err != nil {
+		return "", err
+	}
+	return integer, nil
 }
 
 func decodeBencode(bencodedString string) (interface{}, error) {
