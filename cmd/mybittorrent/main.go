@@ -33,7 +33,7 @@ func decodeString(bencodedString string) (interface{}, error) {
 }
 
 func decodeInteger(bencodedString string) (interface{}, error) {
-	return bencodedString[2:], nil
+	return bencodedString[1 : len(bencodedString)-1], nil
 }
 
 func decodeBencode(bencodedString string) (interface{}, error) {
