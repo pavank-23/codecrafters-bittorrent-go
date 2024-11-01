@@ -42,7 +42,7 @@ func decodeInteger(bencodedString string, index int) (interface{}, error, int) {
 	if err != nil {
 		return "", err, -1
 	}
-	return integer, nil, endOfInteger + 1
+	return integer, nil, endOfInteger
 }
 
 func decodeList(bencodedString string, index int) (interface{}, error, int) {
@@ -51,26 +51,26 @@ func decodeList(bencodedString string, index int) (interface{}, error, int) {
 	for i < len(bencodedString) && bencodedString[i] != 'e' {
 		if bencodedString[i] == 'i' {
 			result, err, index := decodeInteger(bencodedString, i)
-			i = index - 1
+			i = index
 			if err != nil {
-				return []interface{}{}, err, -1
+				return "", err, -1
 			}
 			decodedList = append(decodedList, result)
 		} else if unicode.IsDigit(rune(bencodedString[i])) {
 			result, err, index := decodeString(bencodedString, i)
-			i = index - 1
+			i = index
 			if err != nil {
-				return []interface{}{}, err, -1
+				return "", err, -1
 			}
 			decodedList = append(decodedList, result)
 		} else if bencodedString[i] == 'l' {
 			list, err, index := decodeList(bencodedString, i)
 			if err != nil {
-				return []interface{}{}, err, -1
+				return "", err, -1
 			}
 			decodedList = append(decodedList, list)
 			i = index
-		} 
+		}
 		i += 1
 	}
 	if len(decodedList) == 0 {
