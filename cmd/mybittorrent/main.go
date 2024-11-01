@@ -6,47 +6,100 @@ import (
 	"os"
 	"strconv"
 	"unicode"
-	// bencode "github.com/jackpal/bencode-go" // Available if you need it!
 )
 
 // Ensures gofmt doesn't remove the "os" encoding/json import (feel free to remove this!)
 var _ = json.Marshal
 
-func decodeString(bencodedString string) (interface{}, error) {
+func decodeString(bencodedString string, index int) (interface{}, error, int) {
 	var firstColonIndex int
-
-	for i := 0; i < len(bencodedString); i++ {
+	for i := index; i < len(bencodedString); i++ {
 		if bencodedString[i] == ':' {
 			firstColonIndex = i
 			break
 		}
 	}
 
-	lengthStr := bencodedString[:firstColonIndex]
+	lengthStr := bencodedString[index : firstColonIndex]
 
 	length, err := strconv.Atoi(lengthStr)
 	if err != nil {
-		return "", err
+		return "", err, -1
 	}
 
-	return bencodedString[firstColonIndex+1 : firstColonIndex+1+length], nil
+	return bencodedString[firstColonIndex + 1 : firstColonIndex + 1 + length], nil, firstColonIndex + length
 }
 
-func decodeInteger(bencodedString string) (interface{}, error) {
-	integer, err := strconv.Atoi(bencodedString[1 : len(bencodedString)-1])
-	if err != nil {
-		return "", err
+func decodeInteger(bencodedString string, index int) (interface{}, error, int) {
+	var endOfInteger int
+	for i := index; i < len(bencodedString); i++ {
+		if bencodedString[i] == 'e' {
+			endOfInteger = i
+			break
+		}
 	}
-	return integer, nil
+	integer, err := strconv.Atoi(bencodedString[index + 1 : endOfInteger])
+	if err != nil {
+		return "", err, -1
+	}
+	return integer, nil, endOfInteger + 1
+}
+
+func decodeList(bencodedString string, index int) (interface{}, error, int) {
+	var decodedList []interface{}
+	var i int = index + 1
+	for i < len(bencodedString) && bencodedString[i] != 'e' {
+		if bencodedString[i] == 'i' {
+			result, err, index := decodeInteger(bencodedString, i)
+			i = index - 1
+			if err != nil {
+				return []interface{}{}, err, -1
+			}
+			decodedList = append(decodedList, result)
+		} else if unicode.IsDigit(rune(bencodedString[i])) {
+			result, err, index := decodeString(bencodedString, i)
+			i = index - 1
+			if err != nil {
+				return []interface{}{}, err, -1
+			}
+			decodedList = append(decodedList, result)
+		} else if bencodedString[i] == 'l' {
+			list, err, index := decodeList(bencodedString, i)
+			if err != nil {
+				return []interface{}{}, err, -1
+			}
+			decodedList = append(decodedList, list)
+			i = index
+		} 
+		i += 1
+	}
+	if len(decodedList) == 0 {
+		return []interface{}{}, nil, i
+	}
+	return decodedList, nil, i
 }
 
 func decodeBencode(bencodedString string) (interface{}, error) {
 	if unicode.IsDigit(rune(bencodedString[0])) {
-		return decodeString(bencodedString)
+		result, err, _ := decodeString(bencodedString, 0)
+		if err != nil {
+			return "", err
+		}
+		return result, err
 	} else if bencodedString[0] == 'i' {
-		return decodeInteger(bencodedString)
+		result, err, _ := decodeInteger(bencodedString, 0)
+		if err != nil {
+			return "", err
+		}
+		return result, err
+	} else if bencodedString[0] == 'l' {
+		result, err, _ := decodeList(bencodedString, 0)
+		if err != nil {
+			return "", err
+		}
+		return result, err
 	} else {
-		return "", fmt.Errorf("only strings are supported at the moment")
+		return "", fmt.Errorf("only strings, integers and lists are supported at the moment")
 	}
 }
 
